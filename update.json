@@ -1,0 +1,15 @@
+{
+  "version": "1.1.1",
+  "releaseDate": "2026-05-27",
+  "downloadUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.1/DesktopIconManagerSetup-1.1.1-x64.exe",
+  "portableUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.1/DesktopIconManagerPortable-1.1.1-x64.zip",
+  "sha256": "EC60CA63CAA8CB0E30355114E5738D57B0384A2CB581AACB1F88086787B1CCC4",
+  "notes": [
+    "修复自定义图案预览和实际应用位置不一致",
+    "自定义图案按真实桌面网格生成点位，减少应用后变形",
+    "优化圆形、心形、星形、波浪线、V 字形、X 字形等图案效果",
+    "优化下拉框边框可见性",
+    "文件收纳增加按大类一键勾选",
+    "更新使用说明"
+  ]
+}
