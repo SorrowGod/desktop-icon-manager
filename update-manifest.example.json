@@ -1,0 +1,13 @@
+{
+  "version": "1.1.5",
+  "releaseDate": "2026-05-28",
+  "downloadUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.5/DesktopIconManagerSetup-1.1.5-x64.exe",
+  "portableUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.5/DesktopIconManagerPortable-1.1.5-x64.zip",
+  "sha256": "5C1F2001E697D2F6FC510B70E36F80F2E2D65C6A19A1A9671CF08C9DC5D62DAC",
+  "notes": [
+    "修复部分电脑点击应用后桌面图标完全不移动但软件没有提示的问题",
+    "应用布局前会检测桌面自动排列图标状态，必要时尝试关闭后再摆放",
+    "应用布局后会重新读取真实坐标确认图标是否到位",
+    "如果 Windows 拒绝移动或只移动了部分图标，会弹出明确提示并可复制详情"
+  ]
+}
