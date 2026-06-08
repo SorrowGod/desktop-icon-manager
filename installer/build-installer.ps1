@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')
-$projectPath = Join-Path $repoRoot 'DesktopIconManager.csproj'
+$projectPath = Join-Path $repoRoot 'src\DesktopIconManager\DesktopIconManager.csproj'
 $scriptPath = Join-Path $PSScriptRoot 'DesktopIconManager.iss'
 $publishDir = if ($env:DICM_PUBLISH_DIR) {
     Resolve-Path -LiteralPath $env:DICM_PUBLISH_DIR
@@ -120,22 +120,31 @@ $portablePath = Join-Path $distDir "DesktopIconManagerPortable-$version-x64.zip"
 if (Test-Path -LiteralPath $portablePath) {
     Remove-Item -LiteralPath $portablePath -Force
 }
-$portableNames = @(
-    'DesktopIconManager.exe',
-    '使用说明.md',
-    'README.md',
-    'CHANGELOG.md',
-    'PRIVACY.md',
-    'UNINSTALL.md',
-    'update-manifest.example.json'
+$portableStage = Join-Path $distDir 'portable-staging'
+if (Test-Path -LiteralPath $portableStage) {
+    Remove-Item -LiteralPath $portableStage -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $portableStage | Out-Null
+
+Copy-Item -LiteralPath $exePath -Destination $portableStage -Force
+
+$portableDocs = @(
+    @{ Source = (Join-Path $repoRoot 'README.md'); Name = 'README.md' },
+    @{ Source = (Join-Path $repoRoot 'docs\使用说明.md'); Name = '使用说明.md' },
+    @{ Source = (Join-Path $repoRoot 'docs\CHANGELOG.md'); Name = 'CHANGELOG.md' },
+    @{ Source = (Join-Path $repoRoot 'docs\PRIVACY.md'); Name = 'PRIVACY.md' },
+    @{ Source = (Join-Path $repoRoot 'docs\UNINSTALL.md'); Name = 'UNINSTALL.md' },
+    @{ Source = (Join-Path $repoRoot 'docs\update-manifest.example.json'); Name = 'update-manifest.example.json' }
 )
-$portableItems = foreach ($name in $portableNames) {
-    $itemPath = Join-Path $publishDir $name
-    if (Test-Path -LiteralPath $itemPath) {
-        Get-Item -LiteralPath $itemPath
+foreach ($doc in $portableDocs) {
+    if (Test-Path -LiteralPath $doc.Source) {
+        Copy-Item -LiteralPath $doc.Source -Destination (Join-Path $portableStage $doc.Name) -Force
     }
 }
+
+$portableItems = Get-ChildItem -LiteralPath $portableStage -Force
 Compress-Archive -LiteralPath $portableItems.FullName -DestinationPath $portablePath -Force
+Remove-Item -LiteralPath $portableStage -Recurse -Force
 
 Write-Host "版本号：$version"
 Write-Host "安装包：$installerPath"

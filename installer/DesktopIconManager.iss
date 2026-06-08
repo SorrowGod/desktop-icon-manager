@@ -20,7 +20,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\dist
 OutputBaseFilename=DesktopIconManagerSetup-{#MyAppVersion}-x64
-SetupIconFile=..\Assets\app-icon.ico
+SetupIconFile=..\src\DesktopIconManager\Assets\app-icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma
 SolidCompression=yes
@@ -154,11 +154,11 @@ Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: 
 
 [Files]
 Source: "{#MyAppSourceDir}\DesktopIconManager.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppSourceDir}\使用说明.md"; DestDir: "{app}"; DestName: "使用说明.md"; Flags: ignoreversion
+Source: "..\docs\使用说明.md"; DestDir: "{app}"; DestName: "使用说明.md"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; DestName: "README.md"; Flags: ignoreversion
-Source: "..\CHANGELOG.md"; DestDir: "{app}"; DestName: "更新日志.md"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\PRIVACY.md"; DestDir: "{app}"; DestName: "隐私说明.md"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\UNINSTALL.md"; DestDir: "{app}"; DestName: "卸载说明.md"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\docs\CHANGELOG.md"; DestDir: "{app}"; DestName: "更新日志.md"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\docs\PRIVACY.md"; DestDir: "{app}"; DestName: "隐私说明.md"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\docs\UNINSTALL.md"; DestDir: "{app}"; DestName: "卸载说明.md"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
