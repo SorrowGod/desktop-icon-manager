@@ -1,0 +1,41 @@
+# Build output
+bin/
+obj/
+dist/
+publish/
+publish_*/
+build_*/
+.build/
+.build_*/
+
+# Local .NET / IDE state
+.vs/
+.vscode/
+*.user
+*.suo
+*.rsuser
+*.DotSettings.user
+.dotnet_home/
+dotnet_home_build/
+
+# Logs and diagnostics
+*.log
+*.dmp
+*.tmp
+*.bak
+*.zip
+*.7z
+
+# Generated release artifacts
+*.exe
+*.msi
+*.pdb
+
+# Local app data exports
+profiles.json
+settings.json
+snapshots.json
+file-organize-operations.json
+pending-operation.json
+desktop-icon-manager.log
+
