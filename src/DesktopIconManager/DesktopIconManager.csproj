@@ -24,12 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="使用说明.md" CopyToPublishDirectory="Always" />
-    <Content Include="README.md" CopyToPublishDirectory="Always" />
-    <Content Include="CHANGELOG.md" CopyToPublishDirectory="Always" />
-    <Content Include="PRIVACY.md" CopyToPublishDirectory="Always" />
-    <Content Include="UNINSTALL.md" CopyToPublishDirectory="Always" />
-    <Content Include="update-manifest.example.json" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\README.md" Link="README.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\docs\使用说明.md" Link="使用说明.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\docs\CHANGELOG.md" Link="CHANGELOG.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\docs\PRIVACY.md" Link="PRIVACY.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\docs\UNINSTALL.md" Link="UNINSTALL.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\docs\update-manifest.example.json" Link="update-manifest.example.json" CopyToPublishDirectory="Always" />
   </ItemGroup>
 
 </Project>

@@ -69,16 +69,29 @@ git clone https://github.com/SorrowGod/desktop-icon-manager.git
 cd desktop-icon-manager
 ```
 
+仓库结构：
+
+```text
+desktop-icon-manager/
+├─ src/
+│  └─ DesktopIconManager/      # WinForms 应用源码和 .csproj
+├─ docs/                       # 使用说明、隐私说明、卸载说明、更新日志
+├─ installer/                  # Inno Setup 安装包脚本和构建脚本
+├─ update.json                 # GitHub Pages 使用的更新清单
+├─ README.md
+└─ LICENSE
+```
+
 编译：
 
 ```powershell
-dotnet build
+dotnet build .\src\DesktopIconManager\DesktopIconManager.csproj
 ```
 
 发布单文件便携版：
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\publish\win-x64-manager-ui-fluent
+dotnet publish .\src\DesktopIconManager\DesktopIconManager.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\publish\win-x64-manager-ui-fluent
 ```
 
 生成安装包和便携 zip：
@@ -147,10 +160,10 @@ $env:DICM_SIGNTOOL_PATH = "C:\path\to\signtool.exe"
 
 ## 文档
 
-- [使用说明](使用说明.md)
-- [更新日志](CHANGELOG.md)
-- [隐私说明](PRIVACY.md)
-- [卸载说明](UNINSTALL.md)
+- [使用说明](docs/使用说明.md)
+- [更新日志](docs/CHANGELOG.md)
+- [隐私说明](docs/PRIVACY.md)
+- [卸载说明](docs/UNINSTALL.md)
 
 ## 许可证
 
