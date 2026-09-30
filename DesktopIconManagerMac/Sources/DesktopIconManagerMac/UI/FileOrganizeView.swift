@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FileOrganizeView: View {
     @EnvironmentObject private var appState: AppState
+    @State private var showingConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -59,7 +60,7 @@ struct FileOrganizeView: View {
                 }
                 Spacer()
                 Button {
-                    appState.executeFileOrganize()
+                    showingConfirmation = true
                 } label: {
                     Label("收纳选中项", systemImage: "folder.badge.plus")
                 }
@@ -68,5 +69,13 @@ struct FileOrganizeView: View {
             }
         }
         .padding(18)
+        .confirmationDialog(
+            "确认收纳选中的 \(appState.selectedSuggestionIds.count) 个文件？",
+            isPresented: $showingConfirmation
+        ) {
+            Button("收纳文件") { appState.executeFileOrganize() }
+        } message: {
+            Text("文件将移动到桌面分类文件夹；同名文件会跳过，不会覆盖。")
+        }
     }
 }

@@ -20,22 +20,19 @@
 ```bash
 cd DesktopIconManagerMac
 swift test
-swift build -c release --arch arm64 --arch x86_64
 ./scripts/build-mac.sh
 ```
-
-如果本机 SwiftPM 版本不允许测试目标直接依赖 executable target，请把 `Core/` 和 `Services/` 拆成单独 library target，再让 App target 与 test target 同时依赖该 library target。当前源码目录已按 `App/`、`Core/`、`Services/`、`UI/` 分层，拆分时不需要改业务代码。
 
 输出：
 
 - `.build/mac-app/桌面管理器.app`
-- `dist/DesktopIconManagerMac-1.1.2-universal.dmg`
+- `dist/DesktopIconManagerMac-1.1.5-universal.dmg`
 
 没有 Mac 时，可以用 GitHub Actions 构建。说明见 `GITHUB_ACTIONS.md`，workflow 位于仓库根目录 `.github/workflows/build-mac.yml`。
 
 ## 签名和公证
 
-未配置证书时脚本会生成未签名/未公证 dmg。正式分发建议设置：
+未配置证书时脚本会使用临时签名生成未公证 dmg，适合内部测试。正式分发需要在 Mac 上导入 Developer ID Application 证书，然后设置：
 
 ```bash
 export DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)"
@@ -52,4 +49,4 @@ Mac 版需要：
 - 桌面目录访问权限：读取桌面文件、生成收纳建议。
 - 自动化权限：控制 Finder 调整桌面图标位置。
 
-如果系统拒绝 Finder 自动化，应用会保留预览、快照、文件收纳等能力，并在状态栏显示降级提示。
+如果系统拒绝 Finder 自动化，应用会保留预览和文件收纳，但会禁用布局应用与快照恢复，避免使用未知坐标覆盖桌面位置。

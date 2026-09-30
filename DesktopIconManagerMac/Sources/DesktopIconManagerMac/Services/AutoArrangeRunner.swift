@@ -12,7 +12,12 @@ final class AutoArrangeRunner {
             return $0.name.caseInsensitiveCompare(profileName) == .orderedSame
         } ?? store.profiles.first ?? ProfileDefaults.defaultProfile()
 
-        let icons = desktopService.loadDesktopIcons()
+        let scan = desktopService.scanDesktop()
+        guard scan.positionsReliable else {
+            AppLogger.log(scan.warning ?? "Finder 图标位置不可读取，已跳过自动整理。")
+            return 1
+        }
+        let icons = scan.icons
         let layout = DesktopIconArranger.calculateLayout(
             profile: profile,
             icons: icons,

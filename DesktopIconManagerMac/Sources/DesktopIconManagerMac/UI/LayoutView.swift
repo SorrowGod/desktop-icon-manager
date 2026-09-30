@@ -107,6 +107,7 @@ struct LayoutView: View {
             } label: {
                 Label("恢复", systemImage: "clock.arrow.circlepath")
             }
+            .disabled(!appState.canArrange)
 
             Spacer()
 
@@ -116,6 +117,7 @@ struct LayoutView: View {
                 Label("应用", systemImage: "checkmark.circle")
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!appState.canArrange)
         }
     }
 

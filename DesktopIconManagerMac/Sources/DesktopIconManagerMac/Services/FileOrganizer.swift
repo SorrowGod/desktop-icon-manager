@@ -50,9 +50,24 @@ enum FileOrganizer {
         }
     }
 
-    static func execute(suggestions: [FileOrganizeSuggestion], settings: AppSettings) -> FileOrganizeOperation {
+    static func execute(
+        suggestions: [FileOrganizeSuggestion],
+        settings: AppSettings,
+        desktopURL: URL = DesktopService().desktopURL()
+    ) -> FileOrganizeOperation {
         var operation = FileOrganizeOperation(isUndoOperation: false)
-        operation.results = suggestions.map { move(sourcePath: $0.originalPath, targetPath: $0.suggestedTargetPath, undo: false) }
+        operation.results = suggestions.map { suggestion in
+            guard validateMove(suggestion, settings: settings, desktopURL: desktopURL) else {
+                return FileOrganizeMoveResult(
+                    fileName: suggestion.fileName,
+                    originalPath: suggestion.originalPath,
+                    targetPath: suggestion.suggestedTargetPath,
+                    status: "跳过",
+                    errorMessage: "文件或目标位置已变更，请重新扫描"
+                )
+            }
+            return move(sourcePath: suggestion.originalPath, targetPath: suggestion.suggestedTargetPath, undo: false)
+        }
         FileOrganizeOperationStore.add(operation, retentionCount: settings.fileOrganizeUndoRetentionCount)
         return operation
     }
@@ -66,7 +81,7 @@ enum FileOrganizer {
         undo.results = latest.results.filter(\.success).map {
             move(sourcePath: $0.targetPath, targetPath: $0.originalPath, undo: true)
         }
-        if undo.results.contains(where: \.success) {
+        if !undo.results.isEmpty && undo.results.allSatisfy(\.success) {
             FileOrganizeOperationStore.markUndone(latest.id)
         }
         FileOrganizeOperationStore.add(undo, retentionCount: settings.fileOrganizeUndoRetentionCount)
@@ -84,7 +99,33 @@ enum FileOrganizer {
         ]
     }
 
-    private static func move(sourcePath: String, targetPath: String, undo: Bool) -> FileOrganizeMoveResult {
+    static func validateMove(_ suggestion: FileOrganizeSuggestion, settings: AppSettings, desktopURL: URL) -> Bool {
+        let desktop = desktopURL.standardizedFileURL
+        let source = URL(fileURLWithPath: suggestion.originalPath).standardizedFileURL
+        let target = URL(fileURLWithPath: suggestion.suggestedTargetPath).standardizedFileURL
+        let names = settings.desktopOrganizeFolderNames
+        let folderName: String
+        switch suggestion.targetKind {
+        case .document: folderName = sanitizeFolderName(names.documents, fallback: "文档")
+        case .image: folderName = sanitizeFolderName(names.images, fallback: "图片")
+        case .media: folderName = sanitizeFolderName(names.media, fallback: "视频音频")
+        case .archiveOrInstaller: folderName = sanitizeFolderName(names.archivesAndInstallers, fallback: "压缩包安装包")
+        case .other: return false
+        }
+        let expectedDirectory = desktop.appendingPathComponent(folderName, isDirectory: true).standardizedFileURL
+        let expectedTarget = expectedDirectory.appendingPathComponent(suggestion.fileName).standardizedFileURL
+        guard source.deletingLastPathComponent() == desktop,
+              source.lastPathComponent == suggestion.fileName,
+              expectedDirectory.deletingLastPathComponent() == desktop,
+              target == expectedTarget,
+              source != target else {
+            return false
+        }
+        let folderValues = try? expectedDirectory.resourceValues(forKeys: [.isSymbolicLinkKey])
+        return folderValues?.isSymbolicLink != true
+    }
+
+    static func move(sourcePath: String, targetPath: String, undo: Bool) -> FileOrganizeMoveResult {
         var result = FileOrganizeMoveResult(
             fileName: URL(fileURLWithPath: sourcePath).lastPathComponent,
             originalPath: sourcePath,
@@ -179,7 +220,7 @@ enum FileOrganizer {
 
     private static func sanitizeFolderName(_ value: String, fallback: String) -> String {
         var text = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.isEmpty {
+        if text.isEmpty || text == "." || text == ".." {
             text = fallback
         }
         for character in CharacterSet(charactersIn: "/:").characters {

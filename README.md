@@ -60,6 +60,10 @@ https://sorrowgod.github.io/desktop-icon-manager/update.json
 - .NET 9 SDK，用于从源码构建
 - Inno Setup 6，可选，用于生成安装包
 
+## macOS 测试版
+
+原生 macOS 工程位于 [DesktopIconManagerMac](DesktopIconManagerMac/README.md)。它使用 SwiftUI、AppKit 和 Finder 自动化，支持 Apple Silicon 与 Intel；CI 生成未公证的 Universal `.dmg` 测试包。工作分支推送后可以在 GitHub Actions 的 `Build Mac` 运行记录里下载 artifact。Finder 图标移动和隐私权限仍需在真实 Mac 上验证。
+
 ## 从源码构建
 
 克隆仓库：

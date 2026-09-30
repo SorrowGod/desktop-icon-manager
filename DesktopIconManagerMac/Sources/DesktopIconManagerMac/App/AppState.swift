@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 final class AppState: ObservableObject {
     @Published var icons: [DesktopIconInfo] = []
+    @Published var canArrange = false
     @Published var profileData: ProfileStoreData = ProfileDefaults.defaultStoreData()
     @Published var selectedProfileName = "默认方案"
     @Published var settings = AppSettings()
@@ -43,9 +44,18 @@ final class AppState: ObservableObject {
         Task { await refreshDesktop() }
     }
 
-    func refreshDesktop() async {
-        icons = desktopService.loadDesktopIcons()
-        statusText = "已读取 \(icons.count) 个桌面项目"
+    func refreshDesktop(updateStatus: Bool = true) async {
+        let scan = desktopService.scanDesktop()
+        icons = scan.icons
+        canArrange = scan.positionsReliable && !scan.icons.isEmpty
+        if let warning = scan.warning {
+            lastWarnings = [warning]
+        } else if updateStatus {
+            lastWarnings = []
+        }
+        if updateStatus {
+            statusText = scan.warning ?? "已读取 \(icons.count) 个桌面项目"
+        }
         recalculateLayout()
         refreshFileSuggestions()
     }
@@ -60,6 +70,10 @@ final class AppState: ObservableObject {
     }
 
     func applyCurrentLayout() async {
+        guard canArrange else {
+            statusText = "Finder 图标坐标尚不可用，不能安全应用布局"
+            return
+        }
         guard let layout = currentLayout else {
             statusText = "没有可应用的布局"
             return
@@ -82,18 +96,22 @@ final class AppState: ObservableObject {
         statusText = result.warnings.isEmpty
             ? "已应用布局，移动 \(result.movedCount) 个项目"
             : "布局未完全应用，移动 \(result.movedCount) 个，跳过 \(result.skippedCount) 个"
-        await refreshDesktop()
+        await refreshDesktop(updateStatus: false)
     }
 
     func restoreLatestSnapshot() async {
+        guard canArrange else {
+            statusText = "Finder 图标坐标尚不可用，不能安全恢复快照"
+            return
+        }
         guard let snapshot = SnapshotStore.load().first else {
             statusText = "没有可恢复的快照"
             return
         }
 
-        let byKey = Dictionary(uniqueKeysWithValues: icons.map { ($0.stableKey.lowercased(), $0) })
+        let byKey = Dictionary(uniqueKeysWithValues: icons.map { ($0.stableKey, $0) })
         let positions = snapshot.icons.compactMap { saved -> ArrangedIconPosition? in
-            guard let icon = byKey[saved.stableKey.lowercased()] else {
+            guard let icon = byKey[saved.stableKey] else {
                 return nil
             }
             return ArrangedIconPosition(icon: icon, targetPosition: Point(x: saved.x, y: saved.y), zoneName: nil)
@@ -109,7 +127,7 @@ final class AppState: ObservableObject {
         let result = await desktopService.apply(layout: layout)
         lastWarnings = result.warnings
         statusText = "恢复快照：移动 \(result.movedCount) 个项目"
-        await refreshDesktop()
+        await refreshDesktop(updateStatus: false)
     }
 
     func refreshFileSuggestions() {
@@ -119,10 +137,11 @@ final class AppState: ObservableObject {
 
     func executeFileOrganize() {
         let selected = fileSuggestions.filter { selectedSuggestionIds.contains($0.id) }
+        guard !selected.isEmpty else { return }
         let operation = FileOrganizer.execute(suggestions: selected, settings: settings)
         statusText = "文件收纳完成：成功 \(operation.results.filter(\.success).count) 个"
         refreshFileSuggestions()
-        Task { await refreshDesktop() }
+        Task { await refreshDesktop(updateStatus: false) }
     }
 
     func undoFileOrganize() {
@@ -132,7 +151,7 @@ final class AppState: ObservableObject {
         }
         statusText = "撤销收纳完成：成功 \(operation.results.filter(\.success).count) 个"
         refreshFileSuggestions()
-        Task { await refreshDesktop() }
+        Task { await refreshDesktop(updateStatus: false) }
     }
 
     func checkUpdates() async {

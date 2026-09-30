@@ -1,15 +1,12 @@
 {
-  "version": "1.1.2",
-  "releaseDate": "2026-05-27",
-  "downloadUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.2/DesktopIconManagerSetup-1.1.2-x64.exe",
-  "portableUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.2/DesktopIconManagerPortable-1.1.2-x64.zip",
-  "macDmgUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.2/DesktopIconManagerMac-1.1.2-universal.dmg",
+  "version": "1.1.5",
+  "releaseDate": "2026-05-28",
+  "downloadUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.5/DesktopIconManagerSetup-1.1.5-x64.exe",
+  "portableUrl": "https://github.com/SorrowGod/desktop-icon-manager/releases/download/v1.1.5/DesktopIconManagerPortable-1.1.5-x64.zip",
+  "macDmgUrl": "",
   "sha256": "",
   "macSha256": "",
   "notes": [
-    "新增原生 macOS 版本工程",
-    "Mac 版支持桌面文件读取、布局预览、文件收纳、快照、更新检查和诊断导出",
-    "Mac 版通过 Finder 自动化尝试应用桌面图标位置",
-    "Universal dmg 同时支持 Apple Silicon 和 Intel Mac"
+    "Mac 测试包待发布；正式发布后填写 macDmgUrl 和 macSha256"
   ]
 }

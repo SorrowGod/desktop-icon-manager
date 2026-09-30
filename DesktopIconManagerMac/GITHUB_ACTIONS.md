@@ -4,14 +4,13 @@
 
 ## 使用方式
 
-1. 把仓库推到 GitHub。
+1. 把包含 `DesktopIconManagerMac/` 和 `.github/workflows/build-mac.yml` 的分支推到 GitHub。
 2. 打开 GitHub 仓库页面。
 3. 进入 `Actions`。
 4. 选择 `Build Mac`。
-5. 点击 `Run workflow`。
+5. 合并到默认分支后可点击 `Run workflow`；工作分支 push 时会自动构建。
 6. 构建结束后，在运行详情页的 `Artifacts` 下载：
    - `DesktopIconManagerMac-dmg`
-   - `DesktopIconManagerMac-app`
 
 ## 自动触发
 
@@ -22,22 +21,22 @@
 
 ## 未签名构建
 
-未配置 Apple Developer 证书时，workflow 会生成未签名、未公证的 `.dmg`。这种包适合内部测试，但普通用户打开时会遇到 Gatekeeper 拦截，需要右键打开或在系统设置中允许。
+workflow 会生成临时签名、未公证的 `.dmg`。这种包适合内部测试，但普通用户打开时会遇到 Gatekeeper 拦截，需要右键打开或在系统设置中允许。
 
 ## 正式签名和公证
 
-如果之后要正式发布，需要 Apple Developer Program 账号，并在 GitHub 仓库 `Settings > Secrets and variables > Actions` 中配置：
+如果之后要正式发布，需要 Apple Developer Program 账号和 Developer ID Application 证书。当前 CI 只构建测试包；签名和公证脚本可在安全导入证书的 Mac 上运行，所需环境变量：
 
 - `DEVELOPER_ID_APPLICATION`
 - `APPLE_ID`
 - `APPLE_TEAM_ID`
 - `APPLE_APP_PASSWORD`
 
-当前 `scripts/build-mac.sh` 已读取这些变量；配置后会尝试签名、公证并 stapler。
+只填写这些环境变量而没有导入证书无法完成签名。不要把证书或密码提交到仓库。
 
 ## 首次失败处理
 
-Mac 版源码还没有在真实 macOS 上编译验证过。第一次 Actions 失败时，优先查看：
+如果 Actions 失败，优先查看：
 
 - `Verify package` 里的 Swift 编译/测试错误。
 - `Build DMG` 里的 bundle、签名、`hdiutil` 错误。
