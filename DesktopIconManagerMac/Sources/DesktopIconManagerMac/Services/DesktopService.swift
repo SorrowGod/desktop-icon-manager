@@ -112,8 +112,8 @@ struct DesktopService: Sendable {
             return DesktopApplyResult(movedCount: 0, skippedCount: layout.positions.count, warnings: ["没有可由 Finder 移动的桌面项目。"])
         }
 
-        let arguments = positions.compactMap { position -> [String]? in
-            guard let path = position.icon.filePath else { return nil }
+        let arguments = positions.flatMap { position -> [String] in
+            guard let path = position.icon.filePath else { return [] }
             return [
                 URL(fileURLWithPath: path).lastPathComponent,
                 String(position.targetPosition.x),
