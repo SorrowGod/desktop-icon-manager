@@ -38,4 +38,10 @@ enum AppPaths {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
+
+    static var patternMasksDirectory: URL {
+        let directory = appSupportDirectory.appendingPathComponent("pattern-masks", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 final class AppState: ObservableObject {
@@ -17,6 +18,7 @@ final class AppState: ObservableObject {
     @Published var updateResult: UpdateCheckResult?
 
     private let desktopService = DesktopService()
+    private var settingsSaveTask: Task<Void, Never>?
 
     var currentProfile: ArrangeProfile {
         get {
@@ -41,7 +43,105 @@ final class AppState: ObservableObject {
         profileData = ProfileStore.load()
         selectedProfileName = profileData.defaultProfileName
         settings = SettingsStore.load()
-        Task { await refreshDesktop() }
+        Task {
+            await refreshDesktop()
+            if settings.checkUpdatesOnStartup {
+                await checkUpdates()
+            }
+        }
+    }
+
+    func selectProfile() {
+        guard profileData.profiles.contains(where: { $0.name == selectedProfileName }) else { return }
+        profileData.defaultProfileName = selectedProfileName
+        ProfileStore.save(profileData)
+        recalculateLayout()
+        syncStartup()
+    }
+
+    func addProfile() {
+        var profile = currentProfile
+        let base = "新方案"
+        var name = base
+        var number = 2
+        while profileData.profiles.contains(where: { $0.name == name }) {
+            name = "\(base) \(number)"
+            number += 1
+        }
+        profile.name = name
+        profile.startupEnabled = false
+        profileData.profiles.append(profile)
+        selectedProfileName = name
+        selectProfile()
+    }
+
+    func deleteCurrentProfile() {
+        guard profileData.profiles.count > 1 else { return }
+        profileData.profiles.removeAll { $0.name == selectedProfileName }
+        selectedProfileName = profileData.profiles[0].name
+        selectProfile()
+    }
+
+    func applyScene(_ scene: DesktopScene) {
+        var profile = currentProfile
+        profile.sceneName = scene.name
+        profile.layoutMode = scene.useDesktopZones ? .desktopZones : scene.layoutMode
+        profile.sortMode = scene.sortMode
+        profile.excludeSystemIcons = scene.excludeSystemIcons
+        profile.customPattern = scene.customPattern
+        profile.desktopZones = scene.desktopZones.isEmpty ? profile.desktopZones : scene.desktopZones
+        profile.excludedIconKeys = scene.excludedIconKeys
+        currentProfile = profile
+    }
+
+    func isExcluded(_ icon: DesktopIconInfo) -> Bool {
+        currentProfile.excludedIconKeys.contains(icon.stableKey)
+    }
+
+    func setExcluded(_ excluded: Bool, icon: DesktopIconInfo) {
+        var profile = currentProfile
+        profile.excludedIconKeys.removeAll { $0 == icon.stableKey }
+        if excluded {
+            profile.excludedIconKeys.append(icon.stableKey)
+        }
+        currentProfile = profile
+    }
+
+    func recordManualPattern() {
+        guard canArrange else {
+            statusText = "读取真实图标位置后才能记录手动点位"
+            return
+        }
+        let area = desktopService.workArea()
+        var profile = currentProfile
+        profile.customPattern.patternKind = .manualPoints
+        profile.customPattern.manualPoints = icons.map { icon in
+            PatternPoint(
+                xPercent: clamp((icon.position.x - area.left) * 100 / max(1, area.width), 0, 100),
+                yPercent: clamp((icon.position.y - area.top) * 100 / max(1, area.height), 0, 100)
+            )
+        }
+        currentProfile = profile
+        statusText = "已记录 \(icons.count) 个手动点位"
+    }
+
+    func chooseImageMask() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let source = panel.url else { return }
+        let destination = AppPaths.patternMasksDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(source.pathExtension)
+        do {
+            try FileManager.default.copyItem(at: source, to: destination)
+            var profile = currentProfile
+            profile.customPattern.imageMaskPath = destination.path
+            currentProfile = profile
+        } catch {
+            AppLogger.log("保存图案图片失败。", error: error)
+            statusText = "无法保存图案图片：\(error.localizedDescription)"
+        }
     }
 
     func refreshDesktop(updateStatus: Bool = true) async {
@@ -156,7 +256,18 @@ final class AppState: ObservableObject {
 
     func checkUpdates() async {
         updateResult = await UpdateChecker.check(settings: settings)
+        settings.lastUpdateCheckAt = Date()
+        SettingsStore.save(settings)
         statusText = updateResult?.message ?? "检查更新完成"
+    }
+
+    func openUpdateDownload() {
+        guard let link = updateResult?.manifest?.macDmgUrl,
+              let url = URL(string: link), url.scheme == "https" else {
+            statusText = "当前更新没有可用的 Mac 下载地址"
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     func exportDiagnostics() {
@@ -169,8 +280,21 @@ final class AppState: ObservableObject {
     }
 
     func saveSettings() {
+        settingsSaveTask?.cancel()
         settings = SettingsStore.normalize(settings)
         SettingsStore.save(settings)
+    }
+
+    func scheduleSettingsSave() {
+        settingsSaveTask?.cancel()
+        settingsSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            SettingsStore.save(settings)
+        }
+    }
+
+    func syncStartup() {
         StartupManager.setEnabled(currentProfile.startupEnabled, profileName: currentProfile.name)
     }
 }

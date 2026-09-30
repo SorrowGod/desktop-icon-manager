@@ -58,6 +58,27 @@ final class LayoutEngineTests: XCTestCase {
         XCTAssertEqual(Set(layout.positions.compactMap(\.zoneName)), Set(["常用软件", "工作文件", "媒体与压缩包", "待处理"]))
     }
 
+    func testDuplicateZoneNamesDoNotCrashLayout() {
+        var profile = ArrangeProfile(layoutMode: .desktopZones)
+        profile.desktopZones = [
+            DesktopZone(name: "工作", categories: [.document]),
+            DesktopZone(name: "工作", xPercent: 50, categories: [.image])
+        ]
+        let icons = [
+            icon(index: 0, name: "Report", category: .document),
+            icon(index: 1, name: "Photo", category: .image)
+        ]
+
+        let layout = DesktopIconArranger.calculateLayout(
+            profile: profile,
+            icons: icons,
+            workArea: RectValue(x: 0, y: 0, width: 1200, height: 800),
+            spacing: SizeValue(width: 100, height: 100)
+        )
+
+        XCTAssertEqual(layout.positions.count, 2)
+    }
+
     private func makeIcons(count: Int) -> [DesktopIconInfo] {
         (0..<count).map { icon(index: $0, name: "Icon\($0)", category: .document) }
     }

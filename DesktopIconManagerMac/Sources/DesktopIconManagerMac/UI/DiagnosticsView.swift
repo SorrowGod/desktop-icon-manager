@@ -23,6 +23,9 @@ struct DiagnosticsView: View {
                         if let result = appState.updateResult {
                             Text(result.message)
                                 .foregroundStyle(result.hasUpdate ? .orange : .secondary)
+                            if result.hasUpdate {
+                                Button("下载 Mac 版") { appState.openUpdateDownload() }
+                            }
                         }
                     }
                 }
@@ -55,5 +58,6 @@ struct DiagnosticsView: View {
             Spacer()
         }
         .padding(18)
+        .onChange(of: appState.settings) { _ in appState.scheduleSettingsSave() }
     }
 }

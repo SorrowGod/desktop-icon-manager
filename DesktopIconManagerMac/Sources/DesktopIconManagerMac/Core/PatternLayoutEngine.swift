@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum PatternLayoutEngine {
@@ -92,7 +93,7 @@ enum PatternLayoutEngine {
         case .text:
             points = textPattern(pattern.text, bounds: bounds, grid: grid, requiredCount: requiredCount)
         case .imageMask:
-            points = selectBest(grid: grid, count: requiredCount, score: { abs(ellipseRadius($0, bounds: bounds) - 1) }, secondary: { angle($0, bounds: bounds) })
+            points = imageMask(pattern.imageMaskPath, bounds: bounds, grid: grid, requiredCount: requiredCount)
         case .manualPoints:
             points = pattern.manualPoints.map {
                 Point(
@@ -234,18 +235,88 @@ enum PatternLayoutEngine {
 
     private static func textPattern(_ text: String, bounds: RectValue, grid: [Point], requiredCount: Int) -> [Point] {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "WORK" : text
-        let characters = max(1, normalized.count)
-        let columns = min(requiredCount, max(characters * 2, Int(ceil(sqrt(Double(requiredCount))))))
-        let rows = max(1, Int(ceil(Double(requiredCount) / Double(columns))))
-        var points: [Point] = []
-        for row in 0..<rows {
-            for column in 0..<columns where points.count < requiredCount {
-                let x = bounds.left + max(0, bounds.width - 1) * column / max(1, columns - 1)
-                let y = bounds.top + max(0, bounds.height - 1) * row / max(1, rows - 1)
-                points.append(Point(x: x, y: y))
+        guard let bitmap = renderMask(bounds: bounds, draw: { canvas in
+            var fontSize = max(24, canvas.height * 0.66)
+            var rendered = NSAttributedString(string: normalized, attributes: [
+                .font: NSFont.boldSystemFont(ofSize: fontSize),
+                .foregroundColor: NSColor.black
+            ])
+            while rendered.size().width > canvas.width * 0.94 && fontSize > 12 {
+                fontSize -= 2
+                rendered = NSAttributedString(string: normalized, attributes: [
+                    .font: NSFont.boldSystemFont(ofSize: fontSize),
+                    .foregroundColor: NSColor.black
+                ])
             }
+            let textSize = rendered.size()
+            rendered.draw(in: NSRect(
+                x: (canvas.width - textSize.width) / 2,
+                y: (canvas.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            ))
+        }) else { return [] }
+        return sampleMask(bitmap, bounds: bounds, grid: grid, requiredCount: requiredCount)
+    }
+
+    private static func imageMask(_ path: String?, bounds: RectValue, grid: [Point], requiredCount: Int) -> [Point] {
+        guard let path, let image = NSImage(contentsOfFile: path),
+              let bitmap = renderMask(bounds: bounds, draw: { canvas in
+                  image.draw(in: canvas, from: .zero, operation: .sourceOver, fraction: 1)
+              }) else {
+            return selectBest(grid: grid, count: requiredCount, score: { abs(ellipseRadius($0, bounds: bounds) - 1) }, secondary: { angle($0, bounds: bounds) })
         }
-        return points
+        return sampleMask(bitmap, bounds: bounds, grid: grid, requiredCount: requiredCount)
+    }
+
+    private static func renderMask(bounds: RectValue, draw: (NSRect) -> Void) -> NSBitmapImageRep? {
+        let width = max(160, bounds.width)
+        let height = max(90, bounds.height)
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return nil
+        }
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        let canvas = NSRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
+        NSColor.white.setFill()
+        NSBezierPath(rect: canvas).fill()
+        draw(canvas)
+        context.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+        return bitmap
+    }
+
+    private static func sampleMask(_ bitmap: NSBitmapImageRep, bounds: RectValue, grid: [Point], requiredCount: Int) -> [Point] {
+        let selected = grid.filter { point in
+            let x = clamp((point.x - bounds.left) * bitmap.pixelsWide / max(1, bounds.width), 0, bitmap.pixelsWide - 1)
+            let y = clamp(bitmap.pixelsHigh - 1 - (point.y - bounds.top) * bitmap.pixelsHigh / max(1, bounds.height), 0, bitmap.pixelsHigh - 1)
+            var darkNeighbors = 0
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    let pixelX = clamp(x + dx, 0, bitmap.pixelsWide - 1)
+                    let pixelY = clamp(y + dy, 0, bitmap.pixelsHigh - 1)
+                    guard let color = bitmap.colorAt(x: pixelX, y: pixelY)?.usingColorSpace(.deviceRGB) else { continue }
+                    let brightness = (color.redComponent + color.greenComponent + color.blueComponent) / 3
+                    if color.alphaComponent > 0.15 && brightness < 0.67 {
+                        darkNeighbors += 1
+                    }
+                }
+            }
+            return darkNeighbors >= 2
+        }
+        return selected.count > requiredCount ? evenlySample(selected, count: requiredCount) : selected
     }
 
     private static func buildOverflowGrid(existing: [Point], count: Int, workArea: RectValue, spacing: SizeValue) -> [Point] {

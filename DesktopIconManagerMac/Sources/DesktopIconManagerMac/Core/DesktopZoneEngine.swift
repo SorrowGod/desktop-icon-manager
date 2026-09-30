@@ -12,25 +12,26 @@ enum DesktopZoneEngine {
         }
 
         let zones = profile.desktopZones.isEmpty ? createDefaultZones() : profile.desktopZones
-        var assignments = Dictionary(uniqueKeysWithValues: zones.map { ($0.name, [DesktopIconInfo]()) })
+        var assignments = Array(repeating: [DesktopIconInfo](), count: zones.count)
         var unassigned: [DesktopIconInfo] = []
 
         for icon in icons {
-            if let zone = findZone(profile: profile, zones: zones, icon: icon) {
-                assignments[zone.name, default: []].append(icon)
+            if let zone = findZone(profile: profile, zones: zones, icon: icon),
+               let index = zones.firstIndex(of: zone) {
+                assignments[index].append(icon)
             } else {
                 unassigned.append(icon)
             }
         }
 
         if !unassigned.isEmpty {
-            let fallback = zones.first { $0.name.caseInsensitiveCompare("待处理") == .orderedSame } ?? zones[zones.count - 1]
-            assignments[fallback.name, default: []].append(contentsOf: unassigned)
+            let fallbackIndex = zones.firstIndex { $0.name.caseInsensitiveCompare("待处理") == .orderedSame } ?? zones.count - 1
+            assignments[fallbackIndex].append(contentsOf: unassigned)
         }
 
         var result: [ArrangedIconPosition] = []
-        for zone in zones {
-            let zoneIcons = assignments[zone.name, default: []]
+        for (index, zone) in zones.enumerated() {
+            let zoneIcons = assignments[index]
             guard !zoneIcons.isEmpty else {
                 continue
             }

@@ -35,13 +35,17 @@ enum UpdateChecker {
             decoder.dateDecodingStrategy = .formatted(Self.dateFormatter)
             let (data, _) = try await URLSession.shared.data(from: url)
             let manifest = try decoder.decode(UpdateManifest.self, from: data)
-            let hasUpdate = compare(manifest.version, ProductInfo.version) == .orderedDescending
+            let versionIsNewer = compare(manifest.version, ProductInfo.version) == .orderedDescending
+            let hasMacDownload = manifest.macDmgUrl?.hasPrefix("https://") == true
+            let hasUpdate = versionIsNewer && hasMacDownload
             return UpdateCheckResult(
                 isConfigured: true,
                 hasUpdate: hasUpdate,
-                isLatest: !hasUpdate,
+                isLatest: !versionIsNewer,
                 currentVersion: ProductInfo.version,
-                message: hasUpdate ? "发现新版本 \(manifest.version)" : "当前已是最新版本。",
+                message: hasUpdate
+                    ? "发现 Mac 新版本 \(manifest.version)"
+                    : (versionIsNewer ? "新版本 \(manifest.version) 尚未提供 Mac 安装包。" : "当前已是最新版本。"),
                 manifest: manifest
             )
         } catch {

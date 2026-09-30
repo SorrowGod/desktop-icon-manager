@@ -15,13 +15,11 @@ struct SettingsView: View {
                 Toggle("启动时检查更新", isOn: $appState.settings.checkUpdatesOnStartup)
                 TextField("更新清单地址", text: $appState.settings.updateManifestUrl)
             }
-            Section {
-                Button("保存") {
-                    appState.saveSettings()
-                    appState.refreshFileSuggestions()
-                }
-            }
         }
         .padding(20)
+        .onChange(of: appState.settings) { _ in
+            appState.scheduleSettingsSave()
+            appState.refreshFileSuggestions()
+        }
     }
 }
