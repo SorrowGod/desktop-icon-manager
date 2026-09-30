@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import XCTest
 @testable import DesktopIconManagerMac
 
@@ -9,8 +10,8 @@ final class PatternMaskTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let darkURL = directory.appendingPathComponent("dark.png")
         let lightURL = directory.appendingPathComponent("light.png")
-        try writeImage(color: .black, to: darkURL)
-        try writeImage(color: .white, to: lightURL)
+        try writeImage(isDark: true, to: darkURL)
+        try writeImage(isDark: false, to: lightURL)
         let workArea = RectValue(x: 0, y: 0, width: 500, height: 400)
         let spacing = SizeValue(width: 80, height: 80)
 
@@ -31,25 +32,22 @@ final class PatternMaskTests: XCTestCase {
         XCTAssertTrue(lightPoints.isEmpty)
     }
 
-    private func writeImage(color: NSColor, to url: URL) throws {
-        let bitmap = try XCTUnwrap(NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: 32,
-            pixelsHigh: 32,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
+    private func writeImage(isDark: Bool, to url: URL) throws {
+        let context = try XCTUnwrap(CGContext(
+            data: nil,
+            width: 32,
+            height: 32,
+            bitsPerComponent: 8,
+            bytesPerRow: 128,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
         ))
-        for y in 0..<32 {
-            for x in 0..<32 {
-                bitmap.setColor(color, atX: x, y: y)
-            }
-        }
-        let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-        try data.write(to: url)
+        let level: CGFloat = isDark ? 0 : 1
+        context.setFillColor(red: level, green: level, blue: level, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+        let image = try XCTUnwrap(context.makeImage())
+        let destination = try XCTUnwrap(CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        XCTAssertTrue(CGImageDestinationFinalize(destination))
     }
 }
