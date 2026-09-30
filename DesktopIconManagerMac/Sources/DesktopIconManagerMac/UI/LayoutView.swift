@@ -43,6 +43,11 @@ struct LayoutView: View {
                     }
                 }
                 PreviewCanvas(layout: appState.currentLayout, icons: appState.icons)
+                if let warning = appState.layoutWarning {
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
                 warningList
             }
             .padding(18)
@@ -277,7 +282,7 @@ struct LayoutView: View {
                 Label("应用", systemImage: "checkmark.circle")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!appState.canArrange)
+            .disabled(!appState.canApplyCurrentLayout)
         }
     }
 

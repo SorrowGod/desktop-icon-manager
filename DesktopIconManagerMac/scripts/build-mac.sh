@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_DIR="$(cd "$ROOT_DIR/.." && pwd)"
 INFO_PLIST="$ROOT_DIR/Sources/DesktopIconManagerMac/Resources/Info.plist"
+ENTITLEMENTS_PLIST="$ROOT_DIR/Sources/DesktopIconManagerMac/Resources/Entitlements.plist"
 APP_NAME="桌面管理器"
 EXECUTABLE_NAME="DesktopIconManagerMac"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")"
@@ -48,9 +49,9 @@ if [[ -f "$ICON_SOURCE" ]]; then
 fi
 
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
-  codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP_DIR"
+  codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS_PLIST" --sign "$DEVELOPER_ID_APPLICATION" "$APP_DIR"
 else
-  codesign --force --sign - "$APP_DIR"
+  codesign --force --entitlements "$ENTITLEMENTS_PLIST" --sign - "$APP_DIR"
   echo "未配置 Developer ID，已使用临时签名。"
 fi
 codesign --verify --deep --strict --verbose=2 "$APP_DIR"

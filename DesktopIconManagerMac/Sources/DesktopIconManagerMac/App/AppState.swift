@@ -39,6 +39,15 @@ final class AppState: ObservableObject {
         }
     }
 
+    var layoutWarning: String? {
+        guard let currentLayout else { return nil }
+        return LayoutSafety.issue(for: currentLayout, desktopIcons: icons)
+    }
+
+    var canApplyCurrentLayout: Bool {
+        canArrange && layoutWarning == nil
+    }
+
     init() {
         profileData = ProfileStore.load()
         selectedProfileName = profileData.defaultProfileName
@@ -145,7 +154,7 @@ final class AppState: ObservableObject {
     }
 
     func refreshDesktop(updateStatus: Bool = true) async {
-        let scan = desktopService.scanDesktop()
+        let scan = await desktopService.scanDesktop()
         icons = scan.icons
         canArrange = scan.positionsReliable && !scan.icons.isEmpty
         if let warning = scan.warning {
@@ -170,8 +179,8 @@ final class AppState: ObservableObject {
     }
 
     func applyCurrentLayout() async {
-        guard canArrange else {
-            statusText = "Finder 图标坐标尚不可用，不能安全应用布局"
+        guard canApplyCurrentLayout else {
+            statusText = layoutWarning ?? "Finder 图标坐标尚不可用，不能安全应用布局"
             return
         }
         guard let layout = currentLayout else {
@@ -214,7 +223,13 @@ final class AppState: ObservableObject {
             guard let icon = byKey[saved.stableKey] else {
                 return nil
             }
-            return ArrangedIconPosition(icon: icon, targetPosition: Point(x: saved.x, y: saved.y), zoneName: nil)
+            let area = desktopService.workArea()
+            let spacing = desktopService.currentSpacing()
+            let point = Point(
+                x: clamp(saved.x, area.left, max(area.left, area.right - spacing.width)),
+                y: clamp(saved.y, area.top, max(area.top, area.bottom - spacing.height))
+            )
+            return ArrangedIconPosition(icon: icon, targetPosition: point, zoneName: nil)
         }
         let layout = ArrangeLayout(
             profile: currentProfile,
@@ -224,6 +239,10 @@ final class AppState: ObservableObject {
             excludedCount: 0,
             layoutSummary: "恢复快照"
         )
+        if let issue = LayoutSafety.issue(for: layout, desktopIcons: icons) {
+            statusText = "无法安全恢复快照：\(issue)"
+            return
+        }
         let result = await desktopService.apply(layout: layout)
         lastWarnings = result.warnings
         statusText = "恢复快照：移动 \(result.movedCount) 个项目"

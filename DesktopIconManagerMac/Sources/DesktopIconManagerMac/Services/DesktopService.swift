@@ -13,11 +13,10 @@ struct DesktopScanResult {
     var warning: String?
 }
 
-final class DesktopService {
-    private let fileManager = FileManager.default
+struct DesktopService: Sendable {
 
     func desktopURL() -> URL {
-        fileManager.urls(for: .desktopDirectory, in: .userDomainMask).first
+        FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop")
     }
 
@@ -39,11 +38,17 @@ final class DesktopService {
         SizeValue(width: 112, height: 96)
     }
 
-    func scanDesktop() -> DesktopScanResult {
+    func scanDesktop() async -> DesktopScanResult {
+        await Task.detached(priority: .userInitiated) {
+            scanDesktopSync()
+        }.value
+    }
+
+    private func scanDesktopSync() -> DesktopScanResult {
         let desktop = desktopURL()
         let urls: [URL]
         do {
-            urls = try fileManager.contentsOfDirectory(
+            urls = try FileManager.default.contentsOfDirectory(
                 at: desktop,
                 includingPropertiesForKeys: [.isDirectoryKey, .contentModificationDateKey, .fileSizeKey, .isHiddenKey],
                 options: [.skipsPackageDescendants]
@@ -92,6 +97,12 @@ final class DesktopService {
     }
 
     func apply(layout: ArrangeLayout) async -> DesktopApplyResult {
+        await Task.detached(priority: .userInitiated) {
+            applySync(layout: layout)
+        }.value
+    }
+
+    private func applySync(layout: ArrangeLayout) -> DesktopApplyResult {
         let desktopPath = desktopURL().standardizedFileURL.path
         let positions = layout.positions.filter { position in
             guard let path = position.icon.filePath else { return false }
@@ -101,9 +112,10 @@ final class DesktopService {
             return DesktopApplyResult(movedCount: 0, skippedCount: layout.positions.count, warnings: ["没有可由 Finder 移动的桌面项目。"])
         }
 
-        let arguments = positions.flatMap { position -> [String] in
-            [
-                URL(fileURLWithPath: position.icon.filePath!).lastPathComponent,
+        let arguments = positions.compactMap { position -> [String]? in
+            guard let path = position.icon.filePath else { return nil }
+            return [
+                URL(fileURLWithPath: path).lastPathComponent,
                 String(position.targetPosition.x),
                 String(position.targetPosition.y)
             ]
@@ -118,7 +130,7 @@ final class DesktopService {
         let accepted = zip(positions, lines).compactMap { pair in
             pair.1 == "ok" ? pair.0 : nil
         }
-        let refreshed = scanDesktop()
+        let refreshed = scanDesktopSync()
         guard refreshed.positionsReliable else {
             return DesktopApplyResult(movedCount: 0, skippedCount: layout.positions.count, warnings: ["Finder 接受了 \(accepted.count) 项移动，但无法重新读取坐标确认结果。"])
         }

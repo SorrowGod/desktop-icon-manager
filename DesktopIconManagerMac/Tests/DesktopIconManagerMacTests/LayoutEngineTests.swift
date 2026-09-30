@@ -20,6 +20,7 @@ final class LayoutEngineTests: XCTestCase {
             Point(x: 216, y: 16),
             Point(x: 216, y: 116)
         ])
+        XCTAssertNotNil(LayoutSafety.issue(for: layout))
     }
 
     func testExcludedCategoryIsNotMoved() {
@@ -37,6 +38,43 @@ final class LayoutEngineTests: XCTestCase {
 
         XCTAssertEqual(layout.excludedCount, 1)
         XCTAssertFalse(layout.positions.contains { $0.icon.stableKey == icons[1].stableKey })
+    }
+
+    func testLayoutSafetyAllowsSeparatedPositions() {
+        let icons = makeIcons(count: 2)
+        let layout = ArrangeLayout(
+            profile: ArrangeProfile(),
+            workArea: RectValue(x: 0, y: 0, width: 500, height: 400),
+            spacing: SizeValue(width: 100, height: 100),
+            positions: [
+                ArrangedIconPosition(icon: icons[0], targetPosition: Point(x: 16, y: 16), zoneName: nil),
+                ArrangedIconPosition(icon: icons[1], targetPosition: Point(x: 116, y: 16), zoneName: nil)
+            ],
+            excludedCount: 0,
+            layoutSummary: "测试"
+        )
+
+        XCTAssertNil(LayoutSafety.issue(for: layout))
+    }
+
+    func testLayoutSafetyRejectsNearOverlapAndExcludedIconCollision() {
+        var icons = makeIcons(count: 3)
+        icons[2].position = Point(x: 240, y: 16)
+        var layout = ArrangeLayout(
+            profile: ArrangeProfile(),
+            workArea: RectValue(x: 0, y: 0, width: 500, height: 400),
+            spacing: SizeValue(width: 100, height: 100),
+            positions: [
+                ArrangedIconPosition(icon: icons[0], targetPosition: Point(x: 16, y: 16), zoneName: nil),
+                ArrangedIconPosition(icon: icons[1], targetPosition: Point(x: 80, y: 16), zoneName: nil)
+            ],
+            excludedCount: 1,
+            layoutSummary: "测试"
+        )
+
+        XCTAssertNotNil(LayoutSafety.issue(for: layout))
+        layout.positions[1].targetPosition = Point(x: 216, y: 16)
+        XCTAssertNotNil(LayoutSafety.issue(for: layout, desktopIcons: icons))
     }
 
     func testDesktopZonesAssignsKnownCategories() {

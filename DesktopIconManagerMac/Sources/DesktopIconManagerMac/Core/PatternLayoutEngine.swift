@@ -269,47 +269,53 @@ enum PatternLayoutEngine {
         return sampleMask(bitmap, bounds: bounds, grid: grid, requiredCount: requiredCount)
     }
 
-    private static func renderMask(bounds: RectValue, draw: (NSRect) -> Void) -> NSBitmapImageRep? {
+    private struct MaskBitmap {
+        let width: Int
+        let height: Int
+        let pixels: [UInt8]
+    }
+
+    private static func renderMask(bounds: RectValue, draw: (NSRect) -> Void) -> MaskBitmap? {
         let width = max(160, bounds.width)
         let height = max(90, bounds.height)
-        guard let bitmap = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: width,
-            pixelsHigh: height,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+        let bytesPerRow = width * 4
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
             return nil
         }
 
+        context.setFillColor(red: 1, green: 1, blue: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = context
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
         let canvas = NSRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
-        NSColor.white.setFill()
-        NSBezierPath(rect: canvas).fill()
         draw(canvas)
-        context.flushGraphics()
+        NSGraphicsContext.current?.flushGraphics()
         NSGraphicsContext.restoreGraphicsState()
-        return bitmap
+        guard let data = context.data else { return nil }
+        let pixels = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: UInt8.self), count: bytesPerRow * height))
+        return MaskBitmap(width: width, height: height, pixels: pixels)
     }
 
-    private static func sampleMask(_ bitmap: NSBitmapImageRep, bounds: RectValue, grid: [Point], requiredCount: Int) -> [Point] {
+    private static func sampleMask(_ bitmap: MaskBitmap, bounds: RectValue, grid: [Point], requiredCount: Int) -> [Point] {
         let selected = grid.filter { point in
-            let x = clamp((point.x - bounds.left) * bitmap.pixelsWide / max(1, bounds.width), 0, bitmap.pixelsWide - 1)
-            let y = clamp(bitmap.pixelsHigh - 1 - (point.y - bounds.top) * bitmap.pixelsHigh / max(1, bounds.height), 0, bitmap.pixelsHigh - 1)
+            let x = clamp((point.x - bounds.left) * bitmap.width / max(1, bounds.width), 0, bitmap.width - 1)
+            let y = clamp(bitmap.height - 1 - (point.y - bounds.top) * bitmap.height / max(1, bounds.height), 0, bitmap.height - 1)
             var darkNeighbors = 0
             for dy in -1...1 {
                 for dx in -1...1 {
-                    let pixelX = clamp(x + dx, 0, bitmap.pixelsWide - 1)
-                    let pixelY = clamp(y + dy, 0, bitmap.pixelsHigh - 1)
-                    guard let color = bitmap.colorAt(x: pixelX, y: pixelY)?.usingColorSpace(.deviceRGB) else { continue }
-                    let brightness = (color.redComponent + color.greenComponent + color.blueComponent) / 3
-                    if color.alphaComponent > 0.15 && brightness < 0.67 {
+                    let pixelX = clamp(x + dx, 0, bitmap.width - 1)
+                    let pixelY = clamp(y + dy, 0, bitmap.height - 1)
+                    let offset = (pixelY * bitmap.width + pixelX) * 4
+                    let brightness = Int(bitmap.pixels[offset]) + Int(bitmap.pixels[offset + 1]) + Int(bitmap.pixels[offset + 2])
+                    if bitmap.pixels[offset + 3] > 38 && brightness < 513 {
                         darkNeighbors += 1
                     }
                 }
