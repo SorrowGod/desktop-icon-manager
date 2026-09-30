@@ -52,10 +52,12 @@ final class AppState: ObservableObject {
         profileData = ProfileStore.load()
         selectedProfileName = profileData.defaultProfileName
         settings = SettingsStore.load()
-        Task {
-            await refreshDesktop()
-            if settings.checkUpdatesOnStartup {
-                await checkUpdates()
+        if !CommandLine.arguments.contains("--auto-arrange") {
+            Task {
+                await refreshDesktop()
+                if settings.checkUpdatesOnStartup {
+                    await checkUpdates()
+                }
             }
         }
     }
@@ -314,6 +316,17 @@ final class AppState: ObservableObject {
     }
 
     func syncStartup() {
-        StartupManager.setEnabled(currentProfile.startupEnabled, profileName: currentProfile.name)
+        do {
+            try StartupManager.setEnabled(currentProfile.startupEnabled, profileName: currentProfile.name)
+        } catch {
+            AppLogger.log("更新 Mac 开机自动整理失败。", error: error)
+            statusText = "开机自动整理设置失败：\(error.localizedDescription)"
+            let actual = StartupManager.isEnabled()
+            if currentProfile.startupEnabled != actual {
+                var profile = currentProfile
+                profile.startupEnabled = actual
+                currentProfile = profile
+            }
+        }
     }
 }
